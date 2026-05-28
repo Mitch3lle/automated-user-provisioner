@@ -20,4 +20,34 @@ INPUT_FILE="$1"
 if [ ! -f "$INPUT_FILE" ]; then
     echo "Error: Input file '$INPUT_FILE' not found." >&2
     exit 1
+fi 
+
+# --- 2. CONFIGURATION & LOGGING SETUP ---
+
+LOG_FILE="/var/log/user_management.log"
+SECURE_STORE="/var/secure"
+PASSWORD_FILE="$SECURE_STORE/user_passwords.csv"
+
+# Create the secure directory if it doesn't exist
+if [ ! -d "$SECURE_STORE" ]; then
+    mkdir -p "$SECURE_STORE"
+    chmod 700 "$SECURE_STORE"
 fi
+
+# Create or touch files and secure their permissions
+touch "$LOG_FILE"
+chmod 644 "$LOG_FILE"
+
+if [ ! -f "$PASSWORD_FILE" ]; then
+    touch "$PASSWORD_FILE"
+    echo "username,password" > "$PASSWORD_FILE"
+fi
+chmod 600 "$PASSWORD_FILE"
+
+# Function to write messages to the log file cleanly
+log_message() {
+    local TIMESTAMP
+    TIMESTAMP=$(date "+%Y-%m-%d %H:%M:%S")
+    echo "$TIMESTAMP - $1" >> "$LOG_FILE"
+    echo "$1" # Print to terminal as well
+}
