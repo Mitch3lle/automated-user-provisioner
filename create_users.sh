@@ -77,3 +77,28 @@ while IFS= read -r line || [ -n "$line" ]; do
         log_message "Warning: Skipping invalid line standard format: '$line'"
         continue
     fi
+# --- 4. OS GROUP & ACCOUNT CREATION ---
+
+    # Ensure the primary department group exists
+    if ! getent group "$main_group" > /dev/null 2>&1; then
+        if groupadd "$main_group"; then
+            log_message "Group '$main_group' created successfully."
+        else
+            log_message "Error: Failed to create group '$main_group'. Skipping user '$username'."
+            continue
+        fi
+    fi
+
+    # Check if the user account already exists on the system
+    if id "$username" > /dev/null 2>&1; then
+        log_message "Warning: User '$username' already exists. Skipping account creation."
+        continue
+    fi
+
+    # Create the user with a home directory and primary group assignment
+    if useradd -m -g "$main_group" -s /bin/bash "$username"; then
+        log_message "User '$username' created successfully with primary group '$main_group'."
+    else
+        log_message "Error: Failed to create user account for '$username'."
+        continue
+    fi
