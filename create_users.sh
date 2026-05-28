@@ -102,3 +102,40 @@ while IFS= read -r line || [ -n "$line" ]; do
         log_message "Error: Failed to create user account for '$username'."
         continue
     fi
+# --- 5. SUPPLEMENTARY GROUPS & SECURITY ---
+
+    # Process additional secondary groups if specified
+    if [ -n "$extra_groups" ]; then
+        # Swap commas to spaces for iteration
+        IFS=',' read -ra ADDR <<< "$extra_groups"
+        for ext_g in "${ADDR[@]}"; do
+            ext_g=$(echo "$ext_g" | xargs)
+            if [ -n "$ext_g" ]; then
+                # Ensure secondary group exists before adding user
+                if ! getent group "$ext_g" > /dev/null 2>&1; then
+                    groupadd "$ext_g"
+                    log_message "Secondary group '$ext_g' created dynamically."
+                fi
+                usermod -aG "$ext_g" "$username"
+                log_message "User '$username' added to secondary group '$ext_g'."
+            fi
+        done
+    fi
+
+    # Generate a cryptographically secure 12-character alphanumeric password
+    password=$(openssl rand -base64 12 | tr -dc 'a-zA-Z0-9' | head -c 12)
+
+    # Set the user's password in the system database
+    echo "$username:$password" | chpasswd
+
+    # Force a password change instantly upon the user's initial login attempt
+    chage -d 0 "$username"
+    log_message "Password policy applied: Force password change on first login set for '$username'."
+
+    # Safely archive credentials into our root-only access matrix
+    echo "$username,$password" >> "$PASSWORD_FILE"
+
+done < "$INPUT_FILE"
+
+log_message "User provisioning batch task completed successfully."
+exit 0
