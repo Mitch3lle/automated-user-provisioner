@@ -51,3 +51,29 @@ log_message() {
     echo "$TIMESTAMP - $1" >> "$LOG_FILE"
     echo "$1" # Print to terminal as well
 }
+# --- 3. BATCH PROCESSING LOOP ---
+
+log_message "Starting user provisioning process using input file: $INPUT_FILE"
+
+# Read file line by line, handling potential missing trailing newlines
+while IFS= read -r line || [ -n "$line" ]; do
+    
+    # Trim leading/trailing whitespaces and skip empty lines or comments
+    line=$(echo "$line" | xargs)
+    if [ -z "$line" ] || [[ "$line" == \#* ]]; then
+        continue
+    fi
+
+    # Parse the line using ';' as the delimiter
+    IFS=';' read -r username main_group extra_groups <<< "$line"
+
+    # Sanitize inputs by removing internal spaces
+    username=$(echo "$username" | xargs)
+    main_group=$(echo "$main_group" | xargs)
+    extra_groups=$(echo "$extra_groups" | xargs)
+
+    # Validate that at least username and main_group exist
+    if [ -z "$username" ] || [ -z "$main_group" ]; then
+        log_message "Warning: Skipping invalid line standard format: '$line'"
+        continue
+    fi
